@@ -62,6 +62,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
     manualStopAndSend,
     startContinuousRecording,
     ignoreContinuousRecording,
+    screenshotRef,
     scrollAreaRef,
   } = props;
 
@@ -93,6 +94,11 @@ export const SystemAudio = (props: useSystemAudioType) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPopoverOpen]);
 
+  // Sync screenshot state to ref so the hook can access it during speech processing
+  useEffect(() => {
+    screenshotRef.current = screenshotImage;
+  }, [screenshotImage, screenshotRef]);
+
   // Reset screenshot when processing starts (message is being sent)
   useEffect(() => {
     if (isProcessing && screenshotImage) {
@@ -121,28 +127,11 @@ export const SystemAudio = (props: useSystemAudioType) => {
 
     setIsCapturingScreenshot(true);
     try {
-      // Check screen recording permission on macOS
-      const platform = navigator.platform.toLowerCase();
-      if (platform.includes("mac")) {
-        const {
-          checkScreenRecordingPermission,
-          requestScreenRecordingPermission,
-        } = await import("tauri-plugin-macos-permissions-api");
-
-        const hasPermission = await checkScreenRecordingPermission();
-        if (!hasPermission) {
-          await requestScreenRecordingPermission();
-          setIsCapturingScreenshot(false);
-          return;
-        }
+      // Capture screenshot directly - permission is handled by the capture command
+      const base64: string = await invoke("capture_to_base64");
+      if (base64) {
+        setScreenshotImage(base64);
       }
-
-      // Capture screenshot
-      const base64: string = await invoke("capture_screenshot", {
-        screenId: null, // Use default screen
-      });
-
-      setScreenshotImage(base64);
     } catch (err) {
       console.error("Failed to capture screenshot:", err);
     } finally {

@@ -107,9 +107,10 @@ export function useSystemAudio() {
     selectedAudioDevices,
   } = useApp();
   const abortControllerRef = useRef<AbortController | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const screenshotRef = useRef<string | null>(null);
 
   // Load context settings and VAD config from localStorage on mount
   useEffect(() => {
@@ -250,6 +251,10 @@ export function useSystemAudio() {
               return;
             }
 
+            // Capture screenshot BEFORE setting isProcessing (which clears the screenshot state)
+            const images = screenshotRef.current ? [screenshotRef.current] : [];
+            screenshotRef.current = null;
+
             setIsProcessing(true);
 
             // Add timeout wrapper for STT request (30 seconds)
@@ -287,7 +292,8 @@ export function useSystemAudio() {
                 await processWithAI(
                   transcription,
                   effectiveSystemPrompt,
-                  previousMessages
+                  previousMessages,
+                  images
                 );
               } else {
                 setError("Received empty transcription");
@@ -472,7 +478,8 @@ export function useSystemAudio() {
     async (
       transcription: string,
       prompt: string,
-      previousMessages: Message[]
+      previousMessages: Message[],
+      imagesBase64: string[] = []
     ) => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -508,7 +515,7 @@ export function useSystemAudio() {
             systemPrompt: prompt,
             history: previousMessages,
             userMessage: transcription,
-            imagesBase64: [],
+            imagesBase64,
           })) {
             fullResponse += chunk;
             setLastAIResponse((prev) => prev + chunk);
@@ -922,6 +929,8 @@ export function useSystemAudio() {
     manualStopAndSend,
     startContinuousRecording,
     ignoreContinuousRecording,
+    // Screenshot ref for including screenshots with voice transcriptions
+    screenshotRef,
     // Scroll area ref for keyboard navigation
     scrollAreaRef,
   };
