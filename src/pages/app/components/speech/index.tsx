@@ -16,6 +16,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { RecordingPanel } from "./RecordingPanel";
 import { ResultsSection } from "./ResultsSection";
@@ -139,6 +140,19 @@ export const SystemAudio = (props: useSystemAudioType) => {
     }
   }, [isCapturingScreenshot]);
 
+  // Listen for voice screenshot global shortcut
+  useEffect(() => {
+    if (!capturing || !isPopoverOpen) return;
+
+    const unlisten = listen("trigger-voice-screenshot", () => {
+      handleCaptureScreenshot();
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [capturing, isPopoverOpen, handleCaptureScreenshot]);
+
   const handleRemoveScreenshot = useCallback(() => {
     setScreenshotImage(null);
   }, []);
@@ -189,7 +203,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
         <PopoverContent
           align="end"
           side="bottom"
-          className="select-none w-screen p-0 border shadow-lg overflow-hidden border-input/50"
+          className="voice-hud select-none w-screen p-0 overflow-hidden border-0 shadow-none"
           sideOffset={8}
         >
           <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
@@ -300,13 +314,13 @@ export const SystemAudio = (props: useSystemAudioType) => {
 
                 {/* Error Display */}
                 {error && !setupRequired && (
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200">
-                    <AlertCircleIcon className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <AlertCircleIcon className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[10px] font-medium text-red-800">
+                      <p className="text-[10px] font-medium text-red-300">
                         Error
                       </p>
-                      <p className="text-[10px] text-red-700">{error}</p>
+                      <p className="text-[10px] text-red-300/80">{error}</p>
                     </div>
                   </div>
                 )}

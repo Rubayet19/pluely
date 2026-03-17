@@ -90,8 +90,8 @@ export const MessageHistory = ({
                   key={message.id}
                   className={`p-3 rounded-lg ${
                     message.role === "user"
-                      ? "bg-primary/10 border-l-4 border-primary"
-                      : "bg-muted/50"
+                      ? "border-l-4 border-primary"
+                      : ""
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">

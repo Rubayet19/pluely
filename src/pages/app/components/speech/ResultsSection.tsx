@@ -31,7 +31,7 @@ export const ResultsSection = ({
   const modKey = isMac ? "⌘" : "Ctrl";
 
   return (
-    <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+    <div className="p-3 space-y-3">
       {/* Header with toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -41,7 +41,7 @@ export const ResultsSection = ({
           </h4>
         </div>
         <div className="flex items-center gap-2 select-none">
-          <span className="text-[9px] text-muted-foreground/50 bg-muted/50 px-1 rounded">
+          <span className="text-[9px] text-muted-foreground/50 px-1 rounded">
             {modKey}+K
           </span>
           <Switch
@@ -74,7 +74,7 @@ export const ResultsSection = ({
                   </span>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="prose prose-sm prose-invert max-w-none">
                   <Markdown>{lastAIResponse}</Markdown>
                   {isAIProcessing && (
                     <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle" />
@@ -91,7 +91,7 @@ export const ResultsSection = ({
         <div className="space-y-2">
           {/* AI Response - First (on top) */}
           {hasResponse && (
-            <div className="rounded-md bg-background/50 p-2.5">
+            <div className="rounded-md p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
                 <BotIcon className="h-3 w-3 text-muted-foreground" />
                 <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -106,7 +106,7 @@ export const ResultsSection = ({
                   </span>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
+                <div className="prose prose-sm prose-invert max-w-none text-sm">
                   <Markdown>{lastAIResponse}</Markdown>
                   {isAIProcessing && (
                     <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle" />
@@ -118,7 +118,7 @@ export const ResultsSection = ({
 
           {/* System Input - Second */}
           {lastTranscription && (
-            <div className="rounded-md border-l-2 border-primary/50 bg-primary/5 p-2.5">
+            <div className="rounded-md border-l-2 border-primary/50 p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
                 <HeadphonesIcon className="h-3 w-3 text-primary" />
                 <span className="text-[9px] font-medium text-primary uppercase tracking-wide">
@@ -145,8 +145,8 @@ export const ResultsSection = ({
                       className={cn(
                         "p-2 rounded-md text-[11px]",
                         message.role === "user"
-                          ? "bg-primary/5 border-l-2 border-primary/30"
-                          : "bg-background/50"
+                          ? "border-l-2 border-primary/30"
+                          : ""
                       )}
                     >
                       <span className="text-[8px] font-medium text-muted-foreground uppercase">

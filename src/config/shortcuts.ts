@@ -71,4 +71,14 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
       linux: "ctrl+shift+s",
     },
   },
+  {
+    id: "voice_screenshot",
+    name: "Voice Mode Screenshot",
+    description: "Capture screenshot in voice mode",
+    defaultKey: {
+      macos: "cmd+shift+p",
+      windows: "ctrl+shift+p",
+      linux: "ctrl+shift+p",
+    },
+  },
 ];

@@ -109,6 +109,7 @@ pub fn handle_shortcut_action<R: Runtime>(app: &AppHandle<R>, action_id: &str) {
         "audio_recording" => handle_audio_shortcut(app),
         "screenshot" => handle_screenshot_shortcut(app),
         "system_audio" => handle_system_audio_shortcut(app),
+        "voice_screenshot" => handle_voice_screenshot_shortcut(app),
         custom_action => {
             // Emit custom action event for frontend to handle
             if let Some(window) = app.get_webview_window("main") {
@@ -300,6 +301,15 @@ fn handle_system_audio_shortcut<R: Runtime>(app: &AppHandle<R>) {
         // Emit event to toggle system audio capture - frontend will determine current state
         if let Err(e) = window.emit("toggle-system-audio", json!({})) {
             eprintln!("Failed to emit system audio event: {}", e);
+        }
+    }
+}
+
+/// Handle voice screenshot shortcut
+fn handle_voice_screenshot_shortcut<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit("trigger-voice-screenshot", json!({})) {
+            eprintln!("Failed to emit voice screenshot event: {}", e);
         }
     }
 }
