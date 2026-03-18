@@ -11,6 +11,7 @@ import {
   CopyButton,
 } from "@/components";
 import { UseCompletionReturn } from "@/types";
+import { useClickThrough } from "@/hooks";
 import { MessageHistory } from "./MessageHistory";
 
 export const Input = ({
@@ -35,6 +36,10 @@ export const Input = ({
   keepEngaged,
   setKeepEngaged,
 }: UseCompletionReturn & { isHidden: boolean }) => {
+  // Enable click-through when AI is streaming or response is visible
+  const shouldClickThrough = isLoading || response !== "";
+  useClickThrough(shouldClickThrough, inputRef);
+
   return (
     <div className="relative flex-1">
       <Popover

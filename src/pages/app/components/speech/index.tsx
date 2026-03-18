@@ -24,7 +24,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { PermissionFlow } from "./PermissionFlow";
 import { QuickActions } from "./QuickActions";
 import { Warning } from "./Warning";
-import { useSystemAudioType } from "@/hooks";
+import { useSystemAudioType, useClickThrough } from "@/hooks";
 import { useApp } from "@/contexts";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +78,11 @@ export const SystemAudio = (props: useSystemAudioType) => {
 
   const isVadMode = vadConfig.enabled;
   const hasResponse = lastAIResponse || isAIProcessing;
+
+  // Enable click-through when AI response or transcript is showing
+  const shouldClickThrough =
+    isAIProcessing || lastAIResponse !== "" || lastTranscription !== "";
+  useClickThrough(shouldClickThrough);
 
   // Keyboard shortcut for Cmd+K to toggle view mode
   useEffect(() => {

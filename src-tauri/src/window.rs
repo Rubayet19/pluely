@@ -84,6 +84,16 @@ pub fn set_window_height(window: tauri::WebviewWindow, height: u32) -> Result<()
 }
 
 #[tauri::command]
+pub fn set_click_through(app: tauri::AppHandle, ignore: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window
+            .set_ignore_cursor_events(ignore)
+            .map_err(|e| format!("Failed to set click-through: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn open_dashboard(app: tauri::AppHandle) -> Result<(), String> {
     show_dashboard_window(&app)
 }
