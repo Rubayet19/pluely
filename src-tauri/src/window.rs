@@ -1,6 +1,16 @@
 #[cfg(target_os = "macos")]
 use tauri::LogicalPosition;
+#[cfg(target_os = "macos")]
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{App, AppHandle, Manager, Runtime, WebviewWindow, WebviewWindowBuilder};
+
+/// Whether cursor-tracking for the interactive zone is active (macOS only)
+#[cfg(target_os = "macos")]
+static CURSOR_TRACKING_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// Height of the interactive top bar zone in logical pixels (54px bar + 10px buffer)
+#[cfg(target_os = "macos")]
+const INTERACTIVE_ZONE_HEIGHT: f64 = 64.0;
 
 // The offset from the top of the screen to the window
 const TOP_OFFSET: i32 = 54;
@@ -86,11 +96,104 @@ pub fn set_window_height(window: tauri::WebviewWindow, height: u32) -> Result<()
 #[tauri::command]
 pub fn set_click_through(app: tauri::AppHandle, ignore: bool) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
-        window
-            .set_ignore_cursor_events(ignore)
-            .map_err(|e| format!("Failed to set click-through: {}", e))?;
+        #[cfg(target_os = "macos")]
+        {
+            if ignore {
+                // Start cursor tracking so the top bar stays interactive
+                if !CURSOR_TRACKING_ACTIVE.swap(true, Ordering::SeqCst) {
+                    let app_clone = app.clone();
+                    std::thread::spawn(move || {
+                        cursor_tracking_loop(app_clone);
+                    });
+                }
+                // Initially enable click-through for the whole window
+                window
+                    .set_ignore_cursor_events(true)
+                    .map_err(|e| format!("Failed to set click-through: {}", e))?;
+            } else {
+                // Stop cursor tracking and make the whole window interactive
+                CURSOR_TRACKING_ACTIVE.store(false, Ordering::SeqCst);
+                window
+                    .set_ignore_cursor_events(false)
+                    .map_err(|e| format!("Failed to set click-through: {}", e))?;
+            }
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            window
+                .set_ignore_cursor_events(ignore)
+                .map_err(|e| format!("Failed to set click-through: {}", e))?;
+        }
     }
     Ok(())
+}
+
+/// Polls cursor position and toggles click-through based on whether
+/// the cursor is over the interactive top bar zone.
+#[cfg(target_os = "macos")]
+fn cursor_tracking_loop(app: tauri::AppHandle) {
+    let mut last_in_zone = false;
+
+    while CURSOR_TRACKING_ACTIVE.load(Ordering::SeqCst) {
+        if let Some(window) = app.get_webview_window("main") {
+            let in_zone = is_cursor_in_interactive_zone(&window);
+
+            if in_zone != last_in_zone {
+                last_in_zone = in_zone;
+                // Double-check tracking is still active before toggling
+                if CURSOR_TRACKING_ACTIVE.load(Ordering::SeqCst) {
+                    // in_zone=true → interactive (don't ignore), in_zone=false → click-through (ignore)
+                    let _ = window.set_ignore_cursor_events(!in_zone);
+                }
+            }
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(16));
+    }
+}
+
+/// Checks if the cursor is within the interactive top bar zone of the window.
+/// Uses macOS NSEvent::mouseLocation for OS-level cursor position (works even
+/// when the window ignores cursor events).
+#[cfg(target_os = "macos")]
+#[allow(deprecated)]
+fn is_cursor_in_interactive_zone(window: &WebviewWindow) -> bool {
+    use tauri_nspanel::cocoa::appkit::{NSEvent, NSScreen};
+    use tauri_nspanel::cocoa::base::nil;
+
+    let scale_factor = window.scale_factor().unwrap_or(2.0);
+
+    // Window position in physical pixels → convert to logical
+    let win_pos = match window.outer_position() {
+        Ok(pos) => pos,
+        Err(_) => return false,
+    };
+    let win_x = win_pos.x as f64 / scale_factor;
+    let win_y = win_pos.y as f64 / scale_factor;
+
+    // Window width in physical pixels → convert to logical
+    let win_width = match window.outer_size() {
+        Ok(size) => size.width as f64 / scale_factor,
+        Err(_) => return false,
+    };
+
+    // Get cursor position in logical coordinates with top-left origin
+    let (cursor_x, cursor_y) = unsafe {
+        let mouse_loc = NSEvent::mouseLocation(nil);
+        // macOS uses bottom-left origin; convert to top-left
+        let screen = NSScreen::mainScreen(nil);
+        if screen == nil {
+            return false;
+        }
+        let screen_frame = NSScreen::frame(screen);
+        (mouse_loc.x, screen_frame.size.height - mouse_loc.y)
+    };
+
+    cursor_x >= win_x
+        && cursor_x <= win_x + win_width
+        && cursor_y >= win_y
+        && cursor_y <= win_y + INTERACTIVE_ZONE_HEIGHT
 }
 
 #[tauri::command]
