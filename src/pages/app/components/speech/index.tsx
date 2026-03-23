@@ -245,21 +245,27 @@ export const SystemAudio = (props: useSystemAudioType) => {
                   {hasActiveLicense && !setupRequired && supportsImages && (
                     <Button
                       size="sm"
-                      variant={screenshotImage ? "default" : "outline"}
+                      variant={screenshots.length > 0 ? "default" : "outline"}
                       onClick={handleCaptureScreenshot}
-                      disabled={isCapturingScreenshot}
+                      disabled={isCapturingScreenshot || screenshots.length >= MAX_SCREENSHOTS}
                       className={cn(
                         "h-6 text-[10px] gap-1 px-2",
-                        screenshotImage && "bg-primary text-primary-foreground"
+                        screenshots.length > 0 && "bg-primary text-primary-foreground"
                       )}
-                      title="Capture screenshot to include with transcription"
+                      title={
+                        screenshots.length >= MAX_SCREENSHOTS
+                          ? `Maximum ${MAX_SCREENSHOTS} screenshots`
+                          : "Capture screenshot to include with transcription"
+                      }
                     >
                       {isCapturingScreenshot ? (
                         <LoaderIcon className="w-3 h-3 animate-spin" />
                       ) : (
                         <CameraIcon className="w-3 h-3" />
                       )}
-                      Screenshot
+                      {screenshots.length > 0
+                        ? `Screenshot (${screenshots.length}/${MAX_SCREENSHOTS})`
+                        : "Screenshot"}
                     </Button>
                   )}
 
