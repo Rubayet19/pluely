@@ -309,7 +309,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
                   <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-primary/5 border border-primary/20">
                     <div className="flex items-center gap-1.5 overflow-x-auto">
                       {screenshots.map((img, index) => (
-                        <div key={index} className="relative flex-shrink-0">
+                        <div key={img.slice(0, 20)} className="relative flex-shrink-0">
                           <img
                             src={`data:image/png;base64,${img}`}
                             alt={`Screenshot ${index + 1}`}
@@ -318,6 +318,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
                           <button
                             type="button"
                             onClick={() => handleRemoveScreenshot(index)}
+                            aria-label={`Remove screenshot ${index + 1}`}
                             className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
                           >
                             <XIcon className="h-2.5 w-2.5" />
