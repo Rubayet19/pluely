@@ -28,6 +28,8 @@ import { useSystemAudioType, useClickThrough } from "@/hooks";
 import { useApp } from "@/contexts";
 import { cn } from "@/lib/utils";
 
+const MAX_SCREENSHOTS = 6;
+
 export const SystemAudio = (props: useSystemAudioType) => {
   const {
     capturing,
@@ -73,7 +75,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
   const [conversationMode, setConversationMode] = useState(false);
 
   // Screenshot state
-  const [screenshotImage, setScreenshotImage] = useState<string | null>(null);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
 
   const isVadMode = vadConfig.enabled;
@@ -102,15 +104,21 @@ export const SystemAudio = (props: useSystemAudioType) => {
 
   // Sync screenshot state to ref so the hook can access it during speech processing
   useEffect(() => {
-    screenshotRef.current = screenshotImage;
-  }, [screenshotImage, screenshotRef]);
+    screenshotRef.current = screenshots;
+  }, [screenshots, screenshotRef]);
 
   // Reset screenshot when processing starts (message is being sent)
   useEffect(() => {
-    if (isProcessing && screenshotImage) {
-      setScreenshotImage(null);
+    if (isProcessing && screenshots.length > 0) {
+      setScreenshots([]);
     }
-  }, [isProcessing, screenshotImage]);
+  }, [isProcessing, screenshots.length]);
+
+  // Clear screenshots when conversation changes (e.g., startNewConversation)
+  const conversationId = conversation.id;
+  useEffect(() => {
+    setScreenshots([]);
+  }, [conversationId]);
 
   const handleToggleCapture = async () => {
     if (capturing) {
