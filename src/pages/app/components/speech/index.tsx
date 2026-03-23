@@ -138,20 +138,20 @@ export const SystemAudio = (props: useSystemAudioType) => {
   // Capture screenshot functionality
   const handleCaptureScreenshot = useCallback(async () => {
     if (isCapturingScreenshot) return;
+    if (screenshots.length >= MAX_SCREENSHOTS) return;
 
     setIsCapturingScreenshot(true);
     try {
-      // Capture screenshot directly - permission is handled by the capture command
       const base64: string = await invoke("capture_to_base64");
       if (base64) {
-        setScreenshotImage(base64);
+        setScreenshots(prev => [...prev, base64]);
       }
     } catch (err) {
       console.error("Failed to capture screenshot:", err);
     } finally {
       setIsCapturingScreenshot(false);
     }
-  }, [isCapturingScreenshot]);
+  }, [isCapturingScreenshot, screenshots.length]);
 
   // Listen for voice screenshot global shortcut
   useEffect(() => {
@@ -166,8 +166,8 @@ export const SystemAudio = (props: useSystemAudioType) => {
     };
   }, [capturing, isPopoverOpen, handleCaptureScreenshot]);
 
-  const handleRemoveScreenshot = useCallback(() => {
-    setScreenshotImage(null);
+  const handleRemoveScreenshot = useCallback((index: number) => {
+    setScreenshots(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const getButtonIcon = () => {
