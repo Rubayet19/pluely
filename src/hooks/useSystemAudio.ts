@@ -634,6 +634,7 @@ export function useSystemAudio() {
       setLastAIResponse("");
       setError("");
       setIsPopoverOpen(false);
+      screenshotRef.current = [];
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(`Failed to stop capture: ${errorMessage}`);
@@ -786,6 +787,7 @@ export function useSystemAudio() {
     setIsAIProcessing(false);
     setIsPopoverOpen(false);
     setUseSystemPrompt(true);
+    screenshotRef.current = [];
   }, []);
 
   // Update VAD configuration
