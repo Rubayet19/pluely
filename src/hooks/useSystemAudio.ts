@@ -110,7 +110,7 @@ export function useSystemAudio() {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const screenshotRef = useRef<string | null>(null);
+  const screenshotRef = useRef<string[]>([]);
 
   // Load context settings and VAD config from localStorage on mount
   useEffect(() => {
@@ -251,9 +251,9 @@ export function useSystemAudio() {
               return;
             }
 
-            // Capture screenshot BEFORE setting isProcessing (which clears the screenshot state)
-            const images = screenshotRef.current ? [screenshotRef.current] : [];
-            screenshotRef.current = null;
+            // Capture screenshots BEFORE setting isProcessing (which clears the screenshot state)
+            const images = [...screenshotRef.current];
+            screenshotRef.current = [];
 
             setIsProcessing(true);
 
