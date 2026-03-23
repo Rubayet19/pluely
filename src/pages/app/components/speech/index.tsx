@@ -305,29 +305,34 @@ export const SystemAudio = (props: useSystemAudioType) => {
             <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
               <div className="p-2 space-y-2">
                 {/* Screenshot Preview */}
-                {screenshotImage && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
-                    <img
-                      src={`data:image/png;base64,${screenshotImage}`}
-                      alt="Screenshot"
-                      className="h-12 w-20 object-cover rounded"
-                    />
-                    <div className="flex-1 min-w-0">
+                {screenshots.length > 0 && (
+                  <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-1.5 overflow-x-auto">
+                      {screenshots.map((img, index) => (
+                        <div key={index} className="relative flex-shrink-0">
+                          <img
+                            src={`data:image/png;base64,${img}`}
+                            alt={`Screenshot ${index + 1}`}
+                            className="h-12 w-20 object-cover rounded"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveScreenshot(index)}
+                            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
+                          >
+                            <XIcon className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between">
                       <p className="text-[10px] font-medium">
-                        Screenshot attached
+                        {screenshots.length}/{MAX_SCREENSHOTS} attached
                       </p>
                       <p className="text-[9px] text-muted-foreground">
                         Will be sent with next transcription
                       </p>
                     </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-5 w-5"
-                      onClick={handleRemoveScreenshot}
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </Button>
                   </div>
                 )}
 
