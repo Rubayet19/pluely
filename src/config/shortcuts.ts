@@ -81,4 +81,14 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
       linux: "ctrl+shift+p",
     },
   },
+  {
+    id: "send_screenshots",
+    name: "Send Screenshots",
+    description: "Send accumulated screenshots in auto mode",
+    defaultKey: {
+      macos: "cmd+shift+enter",
+      windows: "ctrl+shift+enter",
+      linux: "ctrl+shift+enter",
+    },
+  },
 ];

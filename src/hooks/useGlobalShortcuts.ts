@@ -8,6 +8,7 @@ let globalEventListeners: {
   focus?: UnlistenFn;
   audio?: UnlistenFn;
   screenshot?: UnlistenFn;
+  sendScreenshots?: UnlistenFn;
   systemAudio?: UnlistenFn;
   customShortcut?: UnlistenFn;
   registrationError?: UnlistenFn;
@@ -20,6 +21,7 @@ let lastScreenshotEventTime = 0;
 let globalInputRef: HTMLInputElement | null = null;
 let globalAudioCallback: (() => void) | null = null;
 let globalScreenshotCallback: (() => void | Promise<void>) | null = null;
+let globalSendScreenshotsCallback: (() => void | Promise<void>) | null = null;
 let globalSystemAudioCallback: (() => void) | null = null;
 let globalCustomShortcutCallbacks: Map<string, () => void> = new Map();
 
@@ -27,6 +29,7 @@ export const useGlobalShortcuts = () => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const audioCallbackRef = useRef<(() => void) | null>(null);
   const screenshotCallbackRef = useRef<(() => void) | null>(null);
+  const sendScreenshotsCallbackRef = useRef<(() => void | Promise<void>) | null>(null);
   const systemAudioCallbackRef = useRef<(() => void) | null>(null);
   const customShortcutCallbacksRef = useRef<Map<string, () => void>>(new Map());
 
@@ -87,6 +90,15 @@ export const useGlobalShortcuts = () => {
     []
   );
 
+  // Register send screenshots callback
+  const registerSendScreenshotsCallback = useCallback(
+    (callback: () => void | Promise<void>) => {
+      sendScreenshotsCallbackRef.current = callback;
+      globalSendScreenshotsCallback = callback;
+    },
+    []
+  );
+
   // Register system audio callback
   const registerSystemAudioCallback = useCallback((callback: () => void) => {
     systemAudioCallbackRef.current = callback;
@@ -132,6 +144,13 @@ export const useGlobalShortcuts = () => {
             globalEventListeners.screenshot();
           } catch (error) {
             console.warn("Error cleaning up screenshot listener:", error);
+          }
+        }
+        if (globalEventListeners.sendScreenshots) {
+          try {
+            globalEventListeners.sendScreenshots();
+          } catch (error) {
+            console.warn("Error cleaning up send screenshots listener:", error);
           }
         }
         if (globalEventListeners.systemAudio) {
@@ -212,6 +231,31 @@ export const useGlobalShortcuts = () => {
         });
         globalEventListeners.screenshot = unlistenScreenshot;
 
+        // Listen for send screenshots event (batch send in auto mode)
+        const unlistenSendScreenshots = await listen(
+          "trigger-send-screenshots",
+          () => {
+            if (globalSendScreenshotsCallback) {
+              try {
+                Promise.resolve(globalSendScreenshotsCallback()).catch(
+                  (error) => {
+                    console.error(
+                      "Send screenshots shortcut callback failed:",
+                      error
+                    );
+                  }
+                );
+              } catch (error) {
+                console.error(
+                  "Failed to run send screenshots shortcut callback:",
+                  error
+                );
+              }
+            }
+          }
+        );
+        globalEventListeners.sendScreenshots = unlistenSendScreenshots;
+
         // Listen for system audio toggle event
         const unlistenSystemAudio = await listen("toggle-system-audio", () => {
           if (globalSystemAudioCallback) {
@@ -262,6 +306,7 @@ export const useGlobalShortcuts = () => {
     registerInputRef,
     registerAudioCallback,
     registerScreenshotCallback,
+    registerSendScreenshotsCallback,
     registerSystemAudioCallback,
     registerCustomShortcutCallback,
     unregisterCustomShortcutCallback,

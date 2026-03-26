@@ -80,7 +80,7 @@ export const ScreenshotConfigs = ({
               description={
                 screenshotConfiguration.mode === "manual"
                   ? "Screenshots will be captured and automatically added to your attached files. You can then submit them with your own prompt. you can capture multiple screenshots and submit them later."
-                  : "Screenshots will be automatically submitted to AI using your custom prompt. No manual intervention required. only one screenshot can be submitted at a time."
+                  : "Capture multiple screenshots with your screenshot shortcut, then send them all at once with your custom prompt using the send shortcut (Ctrl+Shift+Enter / Cmd+Shift+Enter)."
               }
             />
           </div>
