@@ -66,7 +66,7 @@ export const Files = ({
           <PopoverContent
             align="end"
             side="bottom"
-            className="w-screen p-0 border shadow-lg overflow-hidden"
+            className="hud-theme w-screen p-0 overflow-hidden border-0 shadow-none"
             sideOffset={8}
           >
             <div className="flex items-center justify-between px-4 py-2 border-b">

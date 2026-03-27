@@ -216,7 +216,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
         <PopoverContent
           align="end"
           side="bottom"
-          className="voice-hud select-none w-screen p-0 overflow-hidden border-0 shadow-none"
+          className="hud-theme select-none w-screen p-0 overflow-hidden border-0 shadow-none"
           sideOffset={8}
         >
           <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
