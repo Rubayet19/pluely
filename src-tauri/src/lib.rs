@@ -170,23 +170,35 @@ pub fn run() {
                             };
 
                             if let Some(action_id) = action_id {
-                                match event.state() {
-                                    ShortcutState::Pressed => {
-                                        if let Some(direction) =
-                                            action_id.strip_prefix("move_window_")
-                                        {
+                                if let Some(direction) =
+                                    action_id.strip_prefix("move_window_")
+                                {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
                                             shortcuts::start_move_window(app, direction);
-                                        } else {
+                                        }
+                                        ShortcutState::Released => {
+                                            shortcuts::stop_move_window(app, direction);
+                                        }
+                                    }
+                                } else if let Some(direction) =
+                                    action_id.strip_prefix("scroll_response_")
+                                {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
+                                            shortcuts::handle_scroll_start(app, direction);
+                                        }
+                                        ShortcutState::Released => {
+                                            shortcuts::handle_scroll_stop(app, direction);
+                                        }
+                                    }
+                                } else {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
                                             eprintln!("Shortcut triggered: {}", action_id);
                                             shortcuts::handle_shortcut_action(app, &action_id);
                                         }
-                                    }
-                                    ShortcutState::Released => {
-                                        if let Some(direction) =
-                                            action_id.strip_prefix("move_window_")
-                                        {
-                                            shortcuts::stop_move_window(app, direction);
-                                        }
+                                        ShortcutState::Released => {}
                                     }
                                 }
                             }

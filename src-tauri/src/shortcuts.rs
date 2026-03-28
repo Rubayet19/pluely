@@ -324,6 +324,30 @@ fn handle_voice_screenshot_shortcut<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Emit scroll start event to frontend
+pub fn handle_scroll_start<R: Runtime>(app: &AppHandle<R>, direction: &str) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit(
+            "scroll-response-start",
+            json!({ "direction": direction }),
+        ) {
+            eprintln!("Failed to emit scroll-response-start event: {}", e);
+        }
+    }
+}
+
+/// Emit scroll stop event to frontend
+pub fn handle_scroll_stop<R: Runtime>(app: &AppHandle<R>, direction: &str) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit(
+            "scroll-response-stop",
+            json!({ "direction": direction }),
+        ) {
+            eprintln!("Failed to emit scroll-response-stop event: {}", e);
+        }
+    }
+}
+
 /// Tauri command to get all registered shortcuts
 #[tauri::command]
 pub fn get_registered_shortcuts<R: Runtime>(
@@ -380,6 +404,35 @@ pub fn update_shortcuts<R: Runtime>(
                             eprintln!("Invalid shortcut '{}' for move_window: {}", full_key, e);
                             return Err(format!(
                                 "Invalid shortcut '{}' for move_window: {}",
+                                full_key, e
+                            ));
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            if action_id == "scroll_response" {
+                let modifiers = binding.key.trim();
+                if modifiers.is_empty() {
+                    continue;
+                }
+
+                for arrow in ["up", "down"] {
+                    let full_key = format!("{}+{}", modifiers, arrow);
+                    match full_key.parse::<Shortcut>() {
+                        Ok(shortcut) => {
+                            let direction_action_id = format!("scroll_response_{}", arrow);
+                            shortcuts_to_register.push((direction_action_id, full_key, shortcut));
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Invalid shortcut '{}' for scroll_response: {}",
+                                full_key, e
+                            );
+                            return Err(format!(
+                                "Invalid shortcut '{}' for scroll_response: {}",
                                 full_key, e
                             ));
                         }

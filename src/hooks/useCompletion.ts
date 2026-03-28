@@ -646,6 +646,16 @@ export const useCompletion = () => {
     isFilesPopoverOpen,
   ]);
 
+  // Register scroll ref for global scroll shortcut
+  useEffect(() => {
+    if (isPopoverOpen && scrollAreaRef.current) {
+      globalShortcuts.registerScrollRef(scrollAreaRef.current);
+    }
+    return () => {
+      globalShortcuts.registerScrollRef(null);
+    };
+  }, [isPopoverOpen, globalShortcuts]);
+
   // Auto scroll to bottom when response updates
   useEffect(() => {
     const responseSettings = getResponseSettings();

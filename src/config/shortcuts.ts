@@ -91,4 +91,14 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
       linux: "ctrl+shift+enter",
     },
   },
+  {
+    id: "scroll_response",
+    name: "Scroll Response",
+    description: "Scroll AI response with up/down arrow keys (hold to scroll continuously)",
+    defaultKey: {
+      macos: "cmd+shift",
+      windows: "ctrl+shift",
+      linux: "ctrl+shift",
+    },
+  },
 ];

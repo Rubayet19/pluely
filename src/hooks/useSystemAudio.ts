@@ -811,6 +811,16 @@ export function useSystemAudio() {
     }
   }, [vadConfig.enabled, capturing]);
 
+  // Register scroll ref for global scroll shortcut
+  useEffect(() => {
+    if (isPopoverOpen && scrollAreaRef.current) {
+      globalShortcuts.registerScrollRef(scrollAreaRef.current);
+    }
+    return () => {
+      globalShortcuts.registerScrollRef(null);
+    };
+  }, [isPopoverOpen, globalShortcuts]);
+
   // Keyboard arrow key support for scrolling (local shortcut)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
