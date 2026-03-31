@@ -1,5 +1,5 @@
 import { ChatConversation } from "@/types";
-import { Markdown, Switch, CopyButton } from "@/components";
+import { Markdown, CopyButton } from "@/components";
 import { BotIcon, HeadphonesIcon, Loader2, SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,14 +41,20 @@ export const ResultsSection = ({
           </h4>
         </div>
         <div className="flex items-center gap-2 select-none">
-          <span className="text-[9px] text-muted-foreground/50 px-1 rounded">
-            {modKey}+K
-          </span>
-          <Switch
-            checked={conversationMode}
-            onCheckedChange={setConversationMode}
-            className="scale-75"
-          />
+          <button
+            type="button"
+            onClick={() => setConversationMode(!conversationMode)}
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-medium transition-colors",
+              conversationMode
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "bg-muted text-muted-foreground border border-transparent hover:bg-muted/80"
+            )}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: conversationMode ? "var(--primary)" : "var(--muted-foreground)" }} />
+            {conversationMode ? "History" : "Latest"}
+            <span className="text-[8px] opacity-50 ml-0.5">{modKey}+K</span>
+          </button>
           {lastAIResponse && <CopyButton content={lastAIResponse} />}
         </div>
       </div>

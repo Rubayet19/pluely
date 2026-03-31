@@ -24,7 +24,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { PermissionFlow } from "./PermissionFlow";
 import { QuickActions } from "./QuickActions";
 import { Warning } from "./Warning";
-import { useSystemAudioType, useClickThrough } from "@/hooks";
+import { useSystemAudioType, useClickThrough, useGlobalShortcuts } from "@/hooks";
 import { useApp } from "@/contexts";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +66,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
   } = props;
 
   const { hasActiveLicense, supportsImages } = useApp();
+  const globalShortcuts = useGlobalShortcuts();
 
   // View mode toggle
   const [conversationMode, setConversationMode] = useState(false);
@@ -87,21 +88,18 @@ export const SystemAudio = (props: useSystemAudioType) => {
     (capturing && isContinuousMode);
   useClickThrough(shouldClickThrough);
 
-  // Keyboard shortcut for Cmd+K to toggle view mode
+  // Listen for global toggle conversation shortcut (Cmd+K)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isPopoverOpen) return;
+    if (!capturing || !isPopoverOpen) return;
 
-      // Cmd+K or Ctrl+K to toggle view mode
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setConversationMode((prev) => !prev);
-      }
+    const unlisten = listen("trigger-toggle-conversation", () => {
+      setConversationMode((prev) => !prev);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isPopoverOpen]);
+  }, [capturing, isPopoverOpen]);
 
   // Sync screenshot state to ref so the hook can access it during speech processing
   useEffect(() => {
@@ -161,18 +159,17 @@ export const SystemAudio = (props: useSystemAudioType) => {
     }
   }, [isCapturingScreenshot, screenshots.length]);
 
-  // Listen for voice screenshot global shortcut
+  // Override global screenshot callback when voice mode is active
+  // This makes Cmd+Shift+S capture for voice mode instead of text mode
   useEffect(() => {
     if (!capturing || !isPopoverOpen) return;
 
-    const unlisten = listen("trigger-voice-screenshot", () => {
-      handleCaptureScreenshot();
-    });
+    globalShortcuts.registerScreenshotCallback(handleCaptureScreenshot);
 
     return () => {
-      unlisten.then((fn) => fn());
+      globalShortcuts.registerScreenshotCallback(() => {});
     };
-  }, [capturing, isPopoverOpen, handleCaptureScreenshot]);
+  }, [capturing, isPopoverOpen, handleCaptureScreenshot, globalShortcuts]);
 
   const handleRemoveScreenshot = useCallback((index: number) => {
     setScreenshots(prev => prev.filter((_, i) => i !== index));

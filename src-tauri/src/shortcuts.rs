@@ -110,7 +110,7 @@ pub fn handle_shortcut_action<R: Runtime>(app: &AppHandle<R>, action_id: &str) {
         "screenshot" => handle_screenshot_shortcut(app),
         "send_screenshots" => handle_send_screenshots_shortcut(app),
         "system_audio" => handle_system_audio_shortcut(app),
-        "voice_screenshot" => handle_voice_screenshot_shortcut(app),
+        "toggle_conversation" => handle_toggle_conversation_shortcut(app),
         custom_action => {
             // Emit custom action event for frontend to handle
             if let Some(window) = app.get_webview_window("main") {
@@ -316,10 +316,11 @@ fn handle_send_screenshots_shortcut<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Handle voice screenshot shortcut
-fn handle_voice_screenshot_shortcut<R: Runtime>(app: &AppHandle<R>) {
+/// Handle toggle conversation view shortcut
+fn handle_toggle_conversation_shortcut<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
-        if let Err(e) = window.emit("trigger-voice-screenshot", json!({})) {
-            eprintln!("Failed to emit voice screenshot event: {}", e);
+        if let Err(e) = window.emit("trigger-toggle-conversation", json!({})) {
+            eprintln!("Failed to emit toggle conversation event: {}", e);
         }
     }
 }

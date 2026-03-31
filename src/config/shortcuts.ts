@@ -72,16 +72,6 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
     },
   },
   {
-    id: "voice_screenshot",
-    name: "Voice Mode Screenshot",
-    description: "Capture screenshot in voice mode",
-    defaultKey: {
-      macos: "cmd+shift+p",
-      windows: "ctrl+shift+p",
-      linux: "ctrl+shift+p",
-    },
-  },
-  {
     id: "send_screenshots",
     name: "Send Screenshots",
     description: "Send accumulated screenshots in auto mode",
@@ -89,6 +79,16 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
       macos: "cmd+shift+enter",
       windows: "ctrl+shift+enter",
       linux: "ctrl+shift+enter",
+    },
+  },
+  {
+    id: "toggle_conversation",
+    name: "Toggle Conversation View",
+    description: "Toggle between AI response and full conversation in voice mode",
+    defaultKey: {
+      macos: "cmd+k",
+      windows: "ctrl+k",
+      linux: "ctrl+k",
     },
   },
   {
