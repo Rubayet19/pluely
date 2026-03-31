@@ -60,11 +60,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
     handleQuickActionClick,
     vadConfig,
     updateVadConfiguration,
-    isRecordingInContinuousMode,
-    recordingProgress,
-    manualStopAndSend,
-    startContinuousRecording,
-    ignoreContinuousRecording,
+    isContinuousMode,
     screenshotRef,
     scrollAreaRef,
   } = props;
@@ -81,9 +77,14 @@ export const SystemAudio = (props: useSystemAudioType) => {
   const isVadMode = vadConfig.enabled;
   const hasResponse = lastAIResponse || isAIProcessing;
 
-  // Enable click-through when AI response or transcript is showing
+  // Enable click-through when:
+  // - AI response or transcript is showing (both modes), OR
+  // - Manual mode is actively capturing (immediate click-through)
   const shouldClickThrough =
-    isAIProcessing || lastAIResponse !== "" || lastTranscription !== "";
+    isAIProcessing ||
+    lastAIResponse !== "" ||
+    lastTranscription !== "" ||
+    (capturing && isContinuousMode);
   useClickThrough(shouldClickThrough);
 
   // Keyboard shortcut for Cmd+K to toggle view mode
@@ -107,12 +108,15 @@ export const SystemAudio = (props: useSystemAudioType) => {
     screenshotRef.current = screenshots;
   }, [screenshots, screenshotRef]);
 
-  // Reset screenshot when processing starts (message is being sent)
+  // Reset screenshots:
+  // - Auto mode: clear when STT processing starts (isProcessing)
+  // - Manual mode: only clear when AI processing starts (isAIProcessing = actual send via Cmd+Shift+Enter)
   useEffect(() => {
-    if (isProcessing && screenshots.length > 0) {
+    if (screenshots.length === 0) return;
+    if (isContinuousMode ? isAIProcessing : isProcessing) {
       setScreenshots([]);
     }
-  }, [isProcessing, screenshots.length]);
+  }, [isProcessing, isAIProcessing, screenshots.length, isContinuousMode]);
 
   // Clear screenshots when conversation changes (e.g., startNewConversation)
   const conversationId = conversation.id;
@@ -124,6 +128,10 @@ export const SystemAudio = (props: useSystemAudioType) => {
     if (capturing) {
       await stopCapture();
     } else {
+      // Always start in auto-detect mode
+      if (!vadConfig.enabled) {
+        handleModeChange(true);
+      }
       await startCapture();
     }
   };
@@ -228,11 +236,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
                   <ModeSwitcher
                     isVadMode={isVadMode}
                     onModeChange={handleModeChange}
-                    disabled={
-                      isRecordingInContinuousMode ||
-                      isProcessing ||
-                      isAIProcessing
-                    }
+                    disabled={isProcessing || isAIProcessing}
                   />
                 )}
                 {setupRequired && (
@@ -365,14 +369,8 @@ export const SystemAudio = (props: useSystemAudioType) => {
                     {/* Recording Panel */}
                     <RecordingPanel
                       isVadMode={isVadMode}
-                      isRecording={isRecordingInContinuousMode}
                       isProcessing={isProcessing}
                       isAIProcessing={isAIProcessing}
-                      recordingProgress={recordingProgress}
-                      maxDuration={vadConfig.max_recording_duration_secs}
-                      onStartRecording={startContinuousRecording}
-                      onStopAndSend={manualStopAndSend}
-                      onIgnore={ignoreContinuousRecording}
                     />
 
                     {/* AI Response */}

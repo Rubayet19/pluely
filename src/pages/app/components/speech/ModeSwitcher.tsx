@@ -7,6 +7,8 @@ interface ModeSwitcherProps {
   disabled?: boolean;
 }
 
+const isMac = navigator.platform.toLowerCase().includes("mac");
+
 export const ModeSwitcher = ({
   isVadMode,
   onModeChange,
@@ -53,7 +55,7 @@ export const ModeSwitcher = ({
         <div className="flex flex-col items-start">
           <span className="text-xs font-medium leading-tight">Manual</span>
           <span className="text-[9px] font-normal opacity-60 leading-tight">
-            (press to record)
+            (send with {isMac ? "\u2318\u21E7" : "Ctrl+Shift+"}↵)
           </span>
         </div>
       </button>
