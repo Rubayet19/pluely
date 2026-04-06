@@ -5,6 +5,7 @@ mod capture;
 mod db;
 mod shortcuts;
 mod window;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_posthog::{init as posthog_init, PostHogConfig, PostHogOptions};
@@ -17,11 +18,22 @@ use speaker::VadConfig;
 #[allow(deprecated)]
 use tauri_nspanel::{cocoa::appkit::NSWindowCollectionBehavior, panel_delegate, WebviewWindowExt};
 
-#[derive(Default)]
 pub struct AudioState {
     stream_task: Arc<Mutex<Option<JoinHandle<()>>>>,
     vad_config: Arc<Mutex<VadConfig>>,
     is_capturing: Arc<Mutex<bool>>,
+    is_muted: Arc<AtomicBool>,
+}
+
+impl Default for AudioState {
+    fn default() -> Self {
+        Self {
+            stream_task: Arc::new(Mutex::new(None)),
+            vad_config: Arc::new(Mutex::new(VadConfig::default())),
+            is_capturing: Arc::new(Mutex::new(false)),
+            is_muted: Arc::new(AtomicBool::new(false)),
+        }
+    }
 }
 
 #[tauri::command]
@@ -116,6 +128,7 @@ pub fn run() {
             speaker::get_audio_sample_rate,
             speaker::get_input_devices,
             speaker::get_output_devices,
+            speaker::toggle_mute_capture,
         ])
         .setup(|app| {
             // Setup main window positioning

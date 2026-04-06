@@ -111,6 +111,7 @@ pub fn handle_shortcut_action<R: Runtime>(app: &AppHandle<R>, action_id: &str) {
         "send_screenshots" => handle_send_screenshots_shortcut(app),
         "system_audio" => handle_system_audio_shortcut(app),
         "toggle_conversation" => handle_toggle_conversation_shortcut(app),
+        "mute_voice" => handle_mute_voice_shortcut(app),
         custom_action => {
             // Emit custom action event for frontend to handle
             if let Some(window) = app.get_webview_window("main") {
@@ -321,6 +322,15 @@ fn handle_toggle_conversation_shortcut<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
         if let Err(e) = window.emit("trigger-toggle-conversation", json!({})) {
             eprintln!("Failed to emit toggle conversation event: {}", e);
+        }
+    }
+}
+
+/// Handle mute voice shortcut
+fn handle_mute_voice_shortcut<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit("toggle-mute-voice", json!({})) {
+            eprintln!("Failed to emit mute voice event: {}", e);
         }
     }
 }

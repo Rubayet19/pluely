@@ -46,6 +46,16 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
     name: "System Audio",
     description: "Toggle system audio capture",
     defaultKey: {
+      macos: "cmd+shift+u",
+      windows: "ctrl+shift+u",
+      linux: "ctrl+shift+u",
+    },
+  },
+  {
+    id: "mute_voice",
+    name: "Mute Voice",
+    description: "Mute/unmute audio capture in voice mode",
+    defaultKey: {
       macos: "cmd+shift+m",
       windows: "ctrl+shift+m",
       linux: "ctrl+shift+m",

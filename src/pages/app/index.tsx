@@ -55,6 +55,7 @@ const App = () => {
                   isProcessing={systemAudio.isProcessing}
                   isAIProcessing={systemAudio.isAIProcessing}
                   capturing={systemAudio.capturing}
+                  isMuted={systemAudio.isMuted}
                 />
               </div>
             </div>

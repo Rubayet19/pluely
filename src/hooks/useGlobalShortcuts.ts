@@ -10,6 +10,7 @@ let globalEventListeners: {
   screenshot?: UnlistenFn;
   sendScreenshots?: UnlistenFn;
   systemAudio?: UnlistenFn;
+  muteVoice?: UnlistenFn;
   customShortcut?: UnlistenFn;
   registrationError?: UnlistenFn;
   scrollStart?: UnlistenFn;
@@ -25,6 +26,7 @@ let globalAudioCallback: (() => void) | null = null;
 let globalScreenshotCallback: (() => void | Promise<void>) | null = null;
 let globalSendScreenshotsCallback: (() => void | Promise<void>) | null = null;
 let globalSystemAudioCallback: (() => void) | null = null;
+let globalMuteVoiceCallback: (() => void) | null = null;
 let globalCustomShortcutCallbacks: Map<string, () => void> = new Map();
 
 // Global scroll state
@@ -37,6 +39,7 @@ export const useGlobalShortcuts = () => {
   const screenshotCallbackRef = useRef<(() => void) | null>(null);
   const sendScreenshotsCallbackRef = useRef<(() => void | Promise<void>) | null>(null);
   const systemAudioCallbackRef = useRef<(() => void) | null>(null);
+  const muteVoiceCallbackRef = useRef<(() => void) | null>(null);
   const customShortcutCallbacksRef = useRef<Map<string, () => void>>(new Map());
 
   const checkShortcutsRegistered = useCallback(async (): Promise<boolean> => {
@@ -111,6 +114,15 @@ export const useGlobalShortcuts = () => {
     globalSystemAudioCallback = callback;
   }, []);
 
+  // Register mute voice callback
+  const registerMuteVoiceCallback = useCallback(
+    (callback: (() => void) | null) => {
+      muteVoiceCallbackRef.current = callback;
+      globalMuteVoiceCallback = callback;
+    },
+    []
+  );
+
   // Register custom shortcut callback
   const registerCustomShortcutCallback = useCallback(
     (actionId: string, callback: () => void) => {
@@ -169,6 +181,13 @@ export const useGlobalShortcuts = () => {
             globalEventListeners.systemAudio();
           } catch (error) {
             console.warn("Error cleaning up system audio listener:", error);
+          }
+        }
+        if (globalEventListeners.muteVoice) {
+          try {
+            globalEventListeners.muteVoice();
+          } catch (error) {
+            console.warn("Error cleaning up mute voice listener:", error);
           }
         }
         if (globalEventListeners.customShortcut) {
@@ -289,6 +308,14 @@ export const useGlobalShortcuts = () => {
         });
         globalEventListeners.systemAudio = unlistenSystemAudio;
 
+        // Listen for mute voice toggle event
+        const unlistenMuteVoice = await listen("toggle-mute-voice", () => {
+          if (globalMuteVoiceCallback) {
+            globalMuteVoiceCallback();
+          }
+        });
+        globalEventListeners.muteVoice = unlistenMuteVoice;
+
         // Listen for custom shortcut events
         const unlistenCustomShortcut = await listen<{ action: string }>(
           "custom-shortcut-triggered",
@@ -372,6 +399,7 @@ export const useGlobalShortcuts = () => {
     registerScreenshotCallback,
     registerSendScreenshotsCallback,
     registerSystemAudioCallback,
+    registerMuteVoiceCallback,
     registerCustomShortcutCallback,
     unregisterCustomShortcutCallback,
     registerScrollRef,

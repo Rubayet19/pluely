@@ -82,6 +82,7 @@ export function useSystemAudio() {
   const [showQuickActions, setShowQuickActions] = useState<boolean>(true);
   const [vadConfig, setVadConfig] = useState<VadConfig>(DEFAULT_VAD_CONFIG);
   const [isContinuousMode, setIsContinuousMode] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
 
   const [conversation, setConversation] = useState<ChatConversation>({
     id: "",
@@ -153,6 +154,22 @@ export function useSystemAudio() {
     } else {
       setQuickActions(DEFAULT_QUICK_ACTIONS);
     }
+  }, []);
+
+  // Listen for mute state changes from Rust
+  useEffect(() => {
+    let muteUnlisten: (() => void) | undefined;
+
+    const setup = async () => {
+      muteUnlisten = await listen<boolean>("mute-state-changed", (event) => {
+        setIsMuted(event.payload);
+      });
+    };
+
+    setup();
+    return () => {
+      muteUnlisten?.();
+    };
   }, []);
 
   // Handle audio error and discard events
@@ -496,6 +513,15 @@ export function useSystemAudio() {
     [selectedAIProvider, allAiProviders, conversation.messages]
   );
 
+  const toggleMute = useCallback(async () => {
+    if (!capturing) return;
+    try {
+      await invoke<boolean>("toggle_mute_capture");
+    } catch (err) {
+      console.error("Failed to toggle mute:", err);
+    }
+  }, [capturing]);
+
   const startCapture = useCallback(async () => {
     try {
       setError("");
@@ -565,6 +591,7 @@ export function useSystemAudio() {
       setIsProcessing(false);
       setIsAIProcessing(false);
       setIsContinuousMode(false);
+      setIsMuted(false);
       setLastTranscription("");
       transcriptBufferRef.current = [];
       setLastAIResponse("");
@@ -665,6 +692,10 @@ export function useSystemAudio() {
       }
     });
   }, [startCapture, stopCapture]);
+
+  useEffect(() => {
+    globalShortcuts.registerMuteVoiceCallback(toggleMute);
+  }, [toggleMute]);
 
   useEffect(() => {
     return () => {
@@ -849,5 +880,8 @@ export function useSystemAudio() {
     screenshotRef,
     // Scroll area ref for keyboard navigation
     scrollAreaRef,
+    // Mute state
+    isMuted,
+    toggleMute,
   };
 }
