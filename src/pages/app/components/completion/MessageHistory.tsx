@@ -42,7 +42,7 @@ export const MessageHistory = ({
       <PopoverContent
         align="end"
         side="bottom"
-        className="select-none w-screen p-0 mt-3 border overflow-hidden border-input/50"
+        className="hud-theme select-none w-screen p-0 mt-3 overflow-hidden border-0 shadow-none"
       >
         <div className="border-b border-input/50 p-4">
           <div className="flex items-center justify-between">
@@ -90,8 +90,8 @@ export const MessageHistory = ({
                   key={message.id}
                   className={`p-3 rounded-lg ${
                     message.role === "user"
-                      ? "bg-primary/10 border-l-4 border-primary"
-                      : "bg-muted/50"
+                      ? "border-l-4 border-primary"
+                      : ""
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">

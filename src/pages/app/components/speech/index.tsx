@@ -16,6 +16,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { RecordingPanel } from "./RecordingPanel";
 import { ResultsSection } from "./ResultsSection";
@@ -23,9 +24,11 @@ import { SettingsPanel } from "./SettingsPanel";
 import { PermissionFlow } from "./PermissionFlow";
 import { QuickActions } from "./QuickActions";
 import { Warning } from "./Warning";
-import { useSystemAudioType } from "@/hooks";
+import { useSystemAudioType, useClickThrough, useGlobalShortcuts } from "@/hooks";
 import { useApp } from "@/contexts";
 import { cn } from "@/lib/utils";
+
+const MAX_SCREENSHOTS = 6;
 
 export const SystemAudio = (props: useSystemAudioType) => {
   const {
@@ -57,53 +60,76 @@ export const SystemAudio = (props: useSystemAudioType) => {
     handleQuickActionClick,
     vadConfig,
     updateVadConfiguration,
-    isRecordingInContinuousMode,
-    recordingProgress,
-    manualStopAndSend,
-    startContinuousRecording,
-    ignoreContinuousRecording,
+    isContinuousMode,
+    screenshotRef,
     scrollAreaRef,
   } = props;
 
   const { hasActiveLicense, supportsImages } = useApp();
+  const globalShortcuts = useGlobalShortcuts();
 
   // View mode toggle
   const [conversationMode, setConversationMode] = useState(false);
 
   // Screenshot state
-  const [screenshotImage, setScreenshotImage] = useState<string | null>(null);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
 
   const isVadMode = vadConfig.enabled;
   const hasResponse = lastAIResponse || isAIProcessing;
 
-  // Keyboard shortcut for Cmd+K to toggle view mode
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isPopoverOpen) return;
+  // Enable click-through when:
+  // - AI response or transcript is showing (both modes), OR
+  // - Manual mode is actively capturing (immediate click-through)
+  const shouldClickThrough =
+    isAIProcessing ||
+    lastAIResponse !== "" ||
+    lastTranscription !== "" ||
+    (capturing && isContinuousMode);
+  useClickThrough(shouldClickThrough);
 
-      // Cmd+K or Ctrl+K to toggle view mode
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setConversationMode((prev) => !prev);
-      }
+  // Listen for global toggle conversation shortcut (Cmd+K)
+  useEffect(() => {
+    if (!capturing || !isPopoverOpen) return;
+
+    const unlisten = listen("trigger-toggle-conversation", () => {
+      setConversationMode((prev) => !prev);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
     };
+  }, [capturing, isPopoverOpen]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isPopoverOpen]);
-
-  // Reset screenshot when processing starts (message is being sent)
+  // Sync screenshot state to ref so the hook can access it during speech processing
   useEffect(() => {
-    if (isProcessing && screenshotImage) {
-      setScreenshotImage(null);
+    screenshotRef.current = screenshots;
+  }, [screenshots, screenshotRef]);
+
+  // Reset screenshots:
+  // - Auto mode: clear when STT processing starts (isProcessing)
+  // - Manual mode: only clear when AI processing starts (isAIProcessing = actual send via Cmd+Shift+Enter)
+  useEffect(() => {
+    if (screenshots.length === 0) return;
+    if (isContinuousMode ? isAIProcessing : isProcessing) {
+      setScreenshots([]);
     }
-  }, [isProcessing, screenshotImage]);
+  }, [isProcessing, isAIProcessing, screenshots.length, isContinuousMode]);
+
+  // Clear screenshots when conversation changes (e.g., startNewConversation)
+  const conversationId = conversation.id;
+  useEffect(() => {
+    setScreenshots([]);
+  }, [conversationId]);
 
   const handleToggleCapture = async () => {
     if (capturing) {
       await stopCapture();
     } else {
+      // Always start in auto-detect mode
+      if (!vadConfig.enabled) {
+        handleModeChange(true);
+      }
       await startCapture();
     }
   };
@@ -118,40 +144,35 @@ export const SystemAudio = (props: useSystemAudioType) => {
   // Capture screenshot functionality
   const handleCaptureScreenshot = useCallback(async () => {
     if (isCapturingScreenshot) return;
+    if (screenshots.length >= MAX_SCREENSHOTS) return;
 
     setIsCapturingScreenshot(true);
     try {
-      // Check screen recording permission on macOS
-      const platform = navigator.platform.toLowerCase();
-      if (platform.includes("mac")) {
-        const {
-          checkScreenRecordingPermission,
-          requestScreenRecordingPermission,
-        } = await import("tauri-plugin-macos-permissions-api");
-
-        const hasPermission = await checkScreenRecordingPermission();
-        if (!hasPermission) {
-          await requestScreenRecordingPermission();
-          setIsCapturingScreenshot(false);
-          return;
-        }
+      const base64: string = await invoke("capture_to_base64");
+      if (base64) {
+        setScreenshots(prev => [...prev, base64]);
       }
-
-      // Capture screenshot
-      const base64: string = await invoke("capture_screenshot", {
-        screenId: null, // Use default screen
-      });
-
-      setScreenshotImage(base64);
     } catch (err) {
       console.error("Failed to capture screenshot:", err);
     } finally {
       setIsCapturingScreenshot(false);
     }
-  }, [isCapturingScreenshot]);
+  }, [isCapturingScreenshot, screenshots.length]);
 
-  const handleRemoveScreenshot = useCallback(() => {
-    setScreenshotImage(null);
+  // Override global screenshot callback when voice mode is active
+  // This makes Cmd+Shift+S capture for voice mode instead of text mode
+  useEffect(() => {
+    if (!capturing || !isPopoverOpen) return;
+
+    globalShortcuts.registerScreenshotCallback(handleCaptureScreenshot);
+
+    return () => {
+      globalShortcuts.registerScreenshotCallback(() => {});
+    };
+  }, [capturing, isPopoverOpen, handleCaptureScreenshot, globalShortcuts]);
+
+  const handleRemoveScreenshot = useCallback((index: number) => {
+    setScreenshots(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const getButtonIcon = () => {
@@ -200,7 +221,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
         <PopoverContent
           align="end"
           side="bottom"
-          className="select-none w-screen p-0 border shadow-lg overflow-hidden border-input/50"
+          className="hud-theme select-none w-screen p-0 overflow-hidden border-0 shadow-none"
           sideOffset={8}
         >
           <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
@@ -212,11 +233,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
                   <ModeSwitcher
                     isVadMode={isVadMode}
                     onModeChange={handleModeChange}
-                    disabled={
-                      isRecordingInContinuousMode ||
-                      isProcessing ||
-                      isAIProcessing
-                    }
+                    disabled={isProcessing || isAIProcessing}
                   />
                 )}
                 {setupRequired && (
@@ -229,21 +246,27 @@ export const SystemAudio = (props: useSystemAudioType) => {
                   {hasActiveLicense && !setupRequired && supportsImages && (
                     <Button
                       size="sm"
-                      variant={screenshotImage ? "default" : "outline"}
+                      variant={screenshots.length > 0 ? "default" : "outline"}
                       onClick={handleCaptureScreenshot}
-                      disabled={isCapturingScreenshot}
+                      disabled={isCapturingScreenshot || screenshots.length >= MAX_SCREENSHOTS}
                       className={cn(
                         "h-6 text-[10px] gap-1 px-2",
-                        screenshotImage && "bg-primary text-primary-foreground"
+                        screenshots.length > 0 && "bg-primary text-primary-foreground"
                       )}
-                      title="Capture screenshot to include with transcription"
+                      title={
+                        screenshots.length >= MAX_SCREENSHOTS
+                          ? `Maximum ${MAX_SCREENSHOTS} screenshots`
+                          : "Capture screenshot to include with transcription"
+                      }
                     >
                       {isCapturingScreenshot ? (
                         <LoaderIcon className="w-3 h-3 animate-spin" />
                       ) : (
                         <CameraIcon className="w-3 h-3" />
                       )}
-                      Screenshot
+                      {screenshots.length > 0
+                        ? `Screenshot (${screenshots.length}/${MAX_SCREENSHOTS})`
+                        : "Screenshot"}
                     </Button>
                   )}
 
@@ -283,41 +306,47 @@ export const SystemAudio = (props: useSystemAudioType) => {
             <ScrollArea className="flex-1 min-h-0" ref={scrollAreaRef}>
               <div className="p-2 space-y-2">
                 {/* Screenshot Preview */}
-                {screenshotImage && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
-                    <img
-                      src={`data:image/png;base64,${screenshotImage}`}
-                      alt="Screenshot"
-                      className="h-12 w-20 object-cover rounded"
-                    />
-                    <div className="flex-1 min-w-0">
+                {screenshots.length > 0 && (
+                  <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-1.5 overflow-x-auto">
+                      {screenshots.map((img, index) => (
+                        <div key={img.slice(0, 20)} className="relative flex-shrink-0">
+                          <img
+                            src={`data:image/png;base64,${img}`}
+                            alt={`Screenshot ${index + 1}`}
+                            className="h-12 w-20 object-cover rounded"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveScreenshot(index)}
+                            aria-label={`Remove screenshot ${index + 1}`}
+                            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:bg-destructive/90"
+                          >
+                            <XIcon className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between">
                       <p className="text-[10px] font-medium">
-                        Screenshot attached
+                        {screenshots.length}/{MAX_SCREENSHOTS} attached
                       </p>
                       <p className="text-[9px] text-muted-foreground">
                         Will be sent with next transcription
                       </p>
                     </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-5 w-5"
-                      onClick={handleRemoveScreenshot}
-                    >
-                      <XIcon className="h-3 w-3" />
-                    </Button>
                   </div>
                 )}
 
                 {/* Error Display */}
                 {error && !setupRequired && (
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200">
-                    <AlertCircleIcon className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <AlertCircleIcon className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[10px] font-medium text-red-800">
+                      <p className="text-[10px] font-medium text-red-300">
                         Error
                       </p>
-                      <p className="text-[10px] text-red-700">{error}</p>
+                      <p className="text-[10px] text-red-300/80">{error}</p>
                     </div>
                   </div>
                 )}
@@ -337,14 +366,8 @@ export const SystemAudio = (props: useSystemAudioType) => {
                     {/* Recording Panel */}
                     <RecordingPanel
                       isVadMode={isVadMode}
-                      isRecording={isRecordingInContinuousMode}
                       isProcessing={isProcessing}
                       isAIProcessing={isAIProcessing}
-                      recordingProgress={recordingProgress}
-                      maxDuration={vadConfig.max_recording_duration_secs}
-                      onStartRecording={startContinuousRecording}
-                      onStopAndSend={manualStopAndSend}
-                      onIgnore={ignoreContinuousRecording}
                     />
 
                     {/* AI Response */}

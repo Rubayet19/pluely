@@ -1,5 +1,5 @@
 import { ChatConversation } from "@/types";
-import { Markdown, Switch, CopyButton } from "@/components";
+import { Markdown, CopyButton } from "@/components";
 import { BotIcon, HeadphonesIcon, Loader2, SparklesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,7 @@ export const ResultsSection = ({
   const modKey = isMac ? "⌘" : "Ctrl";
 
   return (
-    <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+    <div className="p-3 space-y-3">
       {/* Header with toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -41,14 +41,20 @@ export const ResultsSection = ({
           </h4>
         </div>
         <div className="flex items-center gap-2 select-none">
-          <span className="text-[9px] text-muted-foreground/50 bg-muted/50 px-1 rounded">
-            {modKey}+K
-          </span>
-          <Switch
-            checked={conversationMode}
-            onCheckedChange={setConversationMode}
-            className="scale-75"
-          />
+          <button
+            type="button"
+            onClick={() => setConversationMode(!conversationMode)}
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-medium transition-colors",
+              conversationMode
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "bg-muted text-muted-foreground border border-transparent hover:bg-muted/80"
+            )}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: conversationMode ? "var(--primary)" : "var(--muted-foreground)" }} />
+            {conversationMode ? "History" : "Latest"}
+            <span className="text-[8px] opacity-50 ml-0.5">{modKey}+K</span>
+          </button>
           {lastAIResponse && <CopyButton content={lastAIResponse} />}
         </div>
       </div>
@@ -74,7 +80,7 @@ export const ResultsSection = ({
                   </span>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="prose prose-sm prose-invert max-w-none">
                   <Markdown>{lastAIResponse}</Markdown>
                   {isAIProcessing && (
                     <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle" />
@@ -91,7 +97,7 @@ export const ResultsSection = ({
         <div className="space-y-2">
           {/* AI Response - First (on top) */}
           {hasResponse && (
-            <div className="rounded-md bg-background/50 p-2.5">
+            <div className="rounded-md p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
                 <BotIcon className="h-3 w-3 text-muted-foreground" />
                 <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -106,7 +112,7 @@ export const ResultsSection = ({
                   </span>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
+                <div className="prose prose-sm prose-invert max-w-none text-sm">
                   <Markdown>{lastAIResponse}</Markdown>
                   {isAIProcessing && (
                     <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle" />
@@ -118,7 +124,7 @@ export const ResultsSection = ({
 
           {/* System Input - Second */}
           {lastTranscription && (
-            <div className="rounded-md border-l-2 border-primary/50 bg-primary/5 p-2.5">
+            <div className="rounded-md border-l-2 border-primary/50 p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
                 <HeadphonesIcon className="h-3 w-3 text-primary" />
                 <span className="text-[9px] font-medium text-primary uppercase tracking-wide">
@@ -145,8 +151,8 @@ export const ResultsSection = ({
                       className={cn(
                         "p-2 rounded-md text-[11px]",
                         message.role === "user"
-                          ? "bg-primary/5 border-l-2 border-primary/30"
-                          : "bg-background/50"
+                          ? "border-l-2 border-primary/30"
+                          : ""
                       )}
                     >
                       <span className="text-[8px] font-medium text-muted-foreground uppercase">

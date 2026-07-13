@@ -541,7 +541,7 @@ export const useCompletion = () => {
   };
 
   const handleScreenshotSubmit = useCallback(
-    async (base64: string, prompt?: string) => {
+    async (base64: string) => {
       if (state.attachedFiles.length >= MAX_FILES) {
         setState((prev) => ({
           ...prev,
@@ -551,141 +551,19 @@ export const useCompletion = () => {
       }
 
       try {
-        if (prompt) {
-          // Auto mode: Submit directly to AI with screenshot
-          const attachedFile: AttachedFile = {
-            id: Date.now().toString(),
-            name: `screenshot_${Date.now()}.png`,
-            type: "image/png",
-            base64: base64,
-            size: base64.length,
-          };
+        // Both auto and manual mode: accumulate screenshots into attachedFiles
+        const attachedFile: AttachedFile = {
+          id: Date.now().toString(),
+          name: `screenshot_${Date.now()}.png`,
+          type: "image/png",
+          base64: base64,
+          size: base64.length,
+        };
 
-          // Generate unique request ID
-          const requestId = generateRequestId();
-          currentRequestIdRef.current = requestId;
-
-          // Cancel any existing request
-          if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-          }
-
-          abortControllerRef.current = new AbortController();
-          const signal = abortControllerRef.current.signal;
-
-          try {
-            // Prepare message history for the AI
-            const messageHistory = state.conversationHistory.map((msg) => ({
-              role: msg.role,
-              content: msg.content,
-            }));
-
-            let fullResponse = "";
-
-            const usePluelyAPI = await shouldUsePluelyAPI();
-            // Check if AI provider is configured
-            if (!selectedAIProvider.provider && !usePluelyAPI) {
-              setState((prev) => ({
-                ...prev,
-                error: "Please select an AI provider in settings",
-              }));
-              return;
-            }
-
-            const provider = allAiProviders.find(
-              (p) => p.id === selectedAIProvider.provider
-            );
-            if (!provider && !usePluelyAPI) {
-              setState((prev) => ({
-                ...prev,
-                error: "Invalid provider selected",
-              }));
-              return;
-            }
-
-            // Clear previous response and set loading state
-            setState((prev) => ({
-              ...prev,
-              input: prompt,
-              isLoading: true,
-              error: null,
-              response: "",
-            }));
-
-            // Use the fetchAIResponse function with image and signal
-            for await (const chunk of fetchAIResponse({
-              provider: usePluelyAPI ? undefined : provider,
-              selectedProvider: selectedAIProvider,
-              systemPrompt: systemPrompt || undefined,
-              history: messageHistory,
-              userMessage: prompt,
-              imagesBase64: [base64],
-              signal,
-            })) {
-              // Only update if this is still the current request
-              if (currentRequestIdRef.current !== requestId || signal.aborted) {
-                return; // Request was superseded or cancelled
-              }
-
-              fullResponse += chunk;
-              setState((prev) => ({
-                ...prev,
-                response: prev.response + chunk,
-              }));
-            }
-
-            // Only proceed if this is still the current request
-            if (currentRequestIdRef.current !== requestId || signal.aborted) {
-              return;
-            }
-
-            setState((prev) => ({ ...prev, isLoading: false }));
-
-            // Focus input after screenshot AI response is complete
-            setTimeout(() => {
-              inputRef.current?.focus();
-            }, 100);
-
-            // Save the conversation after successful completion
-            if (fullResponse) {
-              await saveCurrentConversation(prompt, fullResponse, [
-                attachedFile,
-              ]);
-              // Clear input after saving
-              setState((prev) => ({
-                ...prev,
-                input: "",
-              }));
-            }
-          } catch (e: any) {
-            // Only show error if this is still the current request and not aborted
-            if (currentRequestIdRef.current === requestId && !signal.aborted) {
-              setState((prev) => ({
-                ...prev,
-                error: e.message || "An error occurred",
-              }));
-            }
-          } finally {
-            // Only update loading state if this is still the current request
-            if (currentRequestIdRef.current === requestId && !signal.aborted) {
-              setState((prev) => ({ ...prev, isLoading: false }));
-            }
-          }
-        } else {
-          // Manual mode: Add to attached files
-          const attachedFile: AttachedFile = {
-            id: Date.now().toString(),
-            name: `screenshot_${Date.now()}.png`,
-            type: "image/png",
-            base64: base64,
-            size: base64.length,
-          };
-
-          setState((prev) => ({
-            ...prev,
-            attachedFiles: [...prev.attachedFiles, attachedFile],
-          }));
-        }
+        setState((prev) => ({
+          ...prev,
+          attachedFiles: [...prev.attachedFiles, attachedFile],
+        }));
       } catch (error) {
         console.error("Failed to process screenshot:", error);
         setState((prev) => ({
@@ -698,15 +576,7 @@ export const useCompletion = () => {
         }));
       }
     },
-    [
-      state.attachedFiles.length,
-      state.conversationHistory,
-      selectedAIProvider,
-      allAiProviders,
-      systemPrompt,
-      saveCurrentConversation,
-      inputRef,
-    ]
+    [state.attachedFiles.length]
   );
 
   const onRemoveAllFiles = () => {
@@ -775,6 +645,16 @@ export const useCompletion = () => {
     resizeWindow,
     isFilesPopoverOpen,
   ]);
+
+  // Register scroll ref for global scroll shortcut
+  useEffect(() => {
+    if (isPopoverOpen && scrollAreaRef.current) {
+      globalShortcuts.registerScrollRef(scrollAreaRef.current);
+    }
+    return () => {
+      globalShortcuts.registerScrollRef(null);
+    };
+  }, [isPopoverOpen, globalShortcuts]);
 
   // Auto scroll to bottom when response updates
   useEffect(() => {
@@ -889,13 +769,8 @@ export const useCompletion = () => {
       if (config.enabled) {
         const base64 = await invoke("capture_to_base64");
 
-        if (config.mode === "auto") {
-          // Auto mode: Submit directly to AI with the configured prompt
-          await handleScreenshotSubmit(base64 as string, config.autoPrompt);
-        } else if (config.mode === "manual") {
-          // Manual mode: Add to attached files without prompt
-          await handleScreenshotSubmit(base64 as string);
-        }
+        // Both auto and manual mode: accumulate into attached files
+        await handleScreenshotSubmit(base64 as string);
         screenshotInitiatedByThisContext.current = false;
       } else {
         // Selection Mode: Open overlay to select an area
@@ -931,16 +806,10 @@ export const useCompletion = () => {
 
         isProcessingScreenshotRef.current = true;
         const base64 = event.payload;
-        const config = screenshotConfigRef.current;
 
         try {
-          if (config.mode === "auto") {
-            // Auto mode: Submit directly to AI with the configured prompt
-            await handleScreenshotSubmit(base64 as string, config.autoPrompt);
-          } else if (config.mode === "manual") {
-            // Manual mode: Add to attached files without prompt
-            await handleScreenshotSubmit(base64 as string);
-          }
+          // Both auto and manual mode: accumulate into attached files
+          await handleScreenshotSubmit(base64 as string);
         } catch (error) {
           console.error("Error processing selection:", error);
         } finally {
@@ -974,6 +843,137 @@ export const useCompletion = () => {
     };
   }, []);
 
+  // Send accumulated screenshots with auto prompt (triggered by send_screenshots shortcut)
+  const sendScreenshots = useCallback(async () => {
+    const config = screenshotConfigRef.current;
+
+    // Only works in auto mode with screenshots present
+    if (config.mode !== "auto" || state.attachedFiles.length === 0) {
+      return;
+    }
+
+    const prompt = config.autoPrompt;
+    const imagesBase64 = state.attachedFiles
+      .filter((f) => f.type.startsWith("image/"))
+      .map((f) => f.base64);
+
+    if (imagesBase64.length === 0) {
+      return;
+    }
+
+    // Clear attached files immediately
+    setState((prev) => ({
+      ...prev,
+      attachedFiles: [],
+    }));
+
+    // Generate unique request ID
+    const requestId = generateRequestId();
+    currentRequestIdRef.current = requestId;
+
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    try {
+      const messageHistory = state.conversationHistory.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      let fullResponse = "";
+
+      const usePluelyAPI = await shouldUsePluelyAPI();
+      if (!selectedAIProvider.provider && !usePluelyAPI) {
+        setState((prev) => ({
+          ...prev,
+          error: "Please select an AI provider in settings",
+        }));
+        return;
+      }
+
+      const provider = allAiProviders.find(
+        (p) => p.id === selectedAIProvider.provider
+      );
+      if (!provider && !usePluelyAPI) {
+        setState((prev) => ({
+          ...prev,
+          error: "Invalid provider selected",
+        }));
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        input: prompt,
+        isLoading: true,
+        error: null,
+        response: "",
+      }));
+
+      for await (const chunk of fetchAIResponse({
+        provider: usePluelyAPI ? undefined : provider,
+        selectedProvider: selectedAIProvider,
+        systemPrompt: systemPrompt || undefined,
+        history: messageHistory,
+        userMessage: prompt,
+        imagesBase64,
+        signal,
+      })) {
+        if (currentRequestIdRef.current !== requestId || signal.aborted) {
+          return;
+        }
+
+        fullResponse += chunk;
+        setState((prev) => ({
+          ...prev,
+          response: prev.response + chunk,
+        }));
+      }
+
+      if (currentRequestIdRef.current !== requestId || signal.aborted) {
+        return;
+      }
+
+      setState((prev) => ({ ...prev, isLoading: false }));
+
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+
+      if (fullResponse) {
+        await saveCurrentConversation(prompt, fullResponse, []);
+        setState((prev) => ({
+          ...prev,
+          input: "",
+        }));
+      }
+    } catch (e: any) {
+      if (currentRequestIdRef.current === requestId && !signal.aborted) {
+        setState((prev) => ({
+          ...prev,
+          error: e.message || "An error occurred",
+        }));
+      }
+    } finally {
+      if (currentRequestIdRef.current === requestId && !signal.aborted) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
+    }
+  }, [
+    state.attachedFiles,
+    state.conversationHistory,
+    selectedAIProvider,
+    allAiProviders,
+    systemPrompt,
+    saveCurrentConversation,
+    inputRef,
+  ]);
+
   const toggleRecording = useCallback(() => {
     setEnableVAD(!enableVAD);
     setMicOpen(!micOpen);
@@ -995,12 +995,15 @@ export const useCompletion = () => {
     globalShortcuts.registerAudioCallback(toggleRecording);
     globalShortcuts.registerInputRef(inputRef.current);
     globalShortcuts.registerScreenshotCallback(captureScreenshot);
+    globalShortcuts.registerSendScreenshotsCallback(sendScreenshots);
   }, [
     globalShortcuts.registerAudioCallback,
     globalShortcuts.registerInputRef,
     globalShortcuts.registerScreenshotCallback,
+    globalShortcuts.registerSendScreenshotsCallback,
     toggleRecording,
     captureScreenshot,
+    sendScreenshots,
     inputRef,
   ]);
 

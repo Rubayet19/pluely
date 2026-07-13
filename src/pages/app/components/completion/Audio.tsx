@@ -45,19 +45,19 @@ export const Audio = ({
       <PopoverContent
         align="end"
         side="bottom"
-        className={`w-80 p-3 ${
+        className={`hud-theme w-80 p-3 border-0 shadow-none ${
           pluelyApiEnabled || speechProviderStatus ? "hidden" : ""
         }`}
         sideOffset={8}
       >
         <div className="text-sm select-none">
-          <div className="font-semibold text-orange-600 mb-1">
+          <div className="font-semibold text-orange-400 mb-1">
             Speech Provider Configuration Required
           </div>
           <p className="text-muted-foreground">
             {!speechProviderStatus ? (
               <>
-                <div className="mt-2 flex flex-row gap-1 items-center text-orange-600">
+                <div className="mt-2 flex flex-row gap-1 items-center text-orange-400">
                   <InfoIcon size={16} />
                   {selectedSttProvider.provider ? null : (
                     <p>PROVIDER IS MISSING</p>

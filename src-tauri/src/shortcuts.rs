@@ -108,7 +108,10 @@ pub fn handle_shortcut_action<R: Runtime>(app: &AppHandle<R>, action_id: &str) {
         "move_window_right" => handle_move_window(app, "right"),
         "audio_recording" => handle_audio_shortcut(app),
         "screenshot" => handle_screenshot_shortcut(app),
+        "send_screenshots" => handle_send_screenshots_shortcut(app),
         "system_audio" => handle_system_audio_shortcut(app),
+        "toggle_conversation" => handle_toggle_conversation_shortcut(app),
+        "mute_voice" => handle_mute_voice_shortcut(app),
         custom_action => {
             // Emit custom action event for frontend to handle
             if let Some(window) = app.get_webview_window("main") {
@@ -304,6 +307,58 @@ fn handle_system_audio_shortcut<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Handle send screenshots shortcut (batch send in auto mode)
+fn handle_send_screenshots_shortcut<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit("trigger-send-screenshots", json!({})) {
+            eprintln!("Failed to emit send screenshots event: {}", e);
+        }
+    }
+}
+
+/// Handle voice screenshot shortcut
+/// Handle toggle conversation view shortcut
+fn handle_toggle_conversation_shortcut<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit("trigger-toggle-conversation", json!({})) {
+            eprintln!("Failed to emit toggle conversation event: {}", e);
+        }
+    }
+}
+
+/// Handle mute voice shortcut
+fn handle_mute_voice_shortcut<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit("toggle-mute-voice", json!({})) {
+            eprintln!("Failed to emit mute voice event: {}", e);
+        }
+    }
+}
+
+/// Emit scroll start event to frontend
+pub fn handle_scroll_start<R: Runtime>(app: &AppHandle<R>, direction: &str) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit(
+            "scroll-response-start",
+            json!({ "direction": direction }),
+        ) {
+            eprintln!("Failed to emit scroll-response-start event: {}", e);
+        }
+    }
+}
+
+/// Emit scroll stop event to frontend
+pub fn handle_scroll_stop<R: Runtime>(app: &AppHandle<R>, direction: &str) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.emit(
+            "scroll-response-stop",
+            json!({ "direction": direction }),
+        ) {
+            eprintln!("Failed to emit scroll-response-stop event: {}", e);
+        }
+    }
+}
+
 /// Tauri command to get all registered shortcuts
 #[tauri::command]
 pub fn get_registered_shortcuts<R: Runtime>(
@@ -360,6 +415,35 @@ pub fn update_shortcuts<R: Runtime>(
                             eprintln!("Invalid shortcut '{}' for move_window: {}", full_key, e);
                             return Err(format!(
                                 "Invalid shortcut '{}' for move_window: {}",
+                                full_key, e
+                            ));
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            if action_id == "scroll_response" {
+                let modifiers = binding.key.trim();
+                if modifiers.is_empty() {
+                    continue;
+                }
+
+                for arrow in ["up", "down"] {
+                    let full_key = format!("{}+{}", modifiers, arrow);
+                    match full_key.parse::<Shortcut>() {
+                        Ok(shortcut) => {
+                            let direction_action_id = format!("scroll_response_{}", arrow);
+                            shortcuts_to_register.push((direction_action_id, full_key, shortcut));
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Invalid shortcut '{}' for scroll_response: {}",
+                                full_key, e
+                            );
+                            return Err(format!(
+                                "Invalid shortcut '{}' for scroll_response: {}",
                                 full_key, e
                             ));
                         }

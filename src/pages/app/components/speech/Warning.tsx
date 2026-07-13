@@ -54,7 +54,7 @@ export const Warning = ({ isVadMode }: WarningProps) => {
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 {isVadMode
                   ? "Speech is automatically detected from system audio. When someone speaks, it will be captured and transcribed."
-                  : "Press the record button or use keyboard shortcuts to manually control recording."}
+                  : `Speech is continuously detected. Press ${modKey}+Shift+Enter to send accumulated transcript to AI.`}
               </p>
             </div>
           </div>
@@ -81,26 +81,12 @@ export const Warning = ({ isVadMode }: WarningProps) => {
                 </kbd>
               </div>
               {!isVadMode && (
-                <>
-                  <div className="flex items-center justify-between p-1.5 rounded bg-muted/50">
-                    <span className="text-muted-foreground">Start/Stop</span>
-                    <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono">
-                      Enter
-                    </kbd>
-                  </div>
-                  <div className="flex items-center justify-between p-1.5 rounded bg-muted/50">
-                    <span className="text-muted-foreground">Start record</span>
-                    <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono">
-                      Space
-                    </kbd>
-                  </div>
-                  <div className="flex items-center justify-between p-1.5 rounded bg-muted/50">
-                    <span className="text-muted-foreground">Discard</span>
-                    <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono">
-                      Esc
-                    </kbd>
-                  </div>
-                </>
+                <div className="flex items-center justify-between p-1.5 rounded bg-muted/50">
+                  <span className="text-muted-foreground">Send to AI</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono">
+                    {modKey}+Shift+Enter
+                  </kbd>
+                </div>
               )}
               <div className="flex items-center justify-between p-1.5 rounded bg-muted/50">
                 <span className="text-muted-foreground">Toggle view</span>
@@ -143,8 +129,8 @@ export const Warning = ({ isVadMode }: WarningProps) => {
               during interviews.
             </p>
             <p>
-              <strong>Tip:</strong> Use Manual mode when you need precise
-              control over what gets transcribed.
+              <strong>Tip:</strong> Use Manual mode to review what's being
+              captured before sending to AI.
             </p>
             <p>
               <strong>Tip:</strong> Quick Actions let you send follow-up prompts

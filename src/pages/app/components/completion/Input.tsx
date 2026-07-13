@@ -11,6 +11,7 @@ import {
   CopyButton,
 } from "@/components";
 import { UseCompletionReturn } from "@/types";
+import { useClickThrough } from "@/hooks";
 import { MessageHistory } from "./MessageHistory";
 
 export const Input = ({
@@ -35,6 +36,10 @@ export const Input = ({
   keepEngaged,
   setKeepEngaged,
 }: UseCompletionReturn & { isHidden: boolean }) => {
+  // Enable click-through when AI is streaming or response is visible
+  const shouldClickThrough = isLoading || response !== "";
+  useClickThrough(shouldClickThrough, inputRef);
+
   return (
     <div className="relative flex-1">
       <Popover
@@ -90,10 +95,10 @@ export const Input = ({
         <PopoverContent
           align="end"
           side="bottom"
-          className="w-screen p-0 border shadow-lg overflow-hidden"
+          className="hud-theme w-screen p-0 overflow-hidden border-0 shadow-none"
           sideOffset={8}
         >
-          <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+          <div className="flex items-center justify-between px-4 py-2 border-b">
             <div className="flex flex-row gap-1 items-center">
               <h3 className="font-semibold text-xs select-none">
                 {keepEngaged ? "Conversation Mode" : "AI Response"}
@@ -107,7 +112,7 @@ export const Input = ({
                 <p className="text-[10px]">{`Toggle ${
                   keepEngaged ? "AI response" : "conversation mode"
                 }`}</p>
-                <span className="text-[10px] text-muted-foreground/60 bg-muted/30 px-1 py-0 rounded border border-input/50">
+                <span className="text-[10px] text-muted-foreground/60 px-1 py-0 rounded border border-input/50">
                   {navigator.platform.toLowerCase().includes("mac")
                     ? "⌘"
                     : "Ctrl"}{" "}
@@ -182,8 +187,8 @@ export const Input = ({
                           key={message.id}
                           className={`p-3 rounded-lg text-sm ${
                             message.role === "user"
-                              ? "bg-primary/10 border-l-4 border-primary"
-                              : "bg-muted/50"
+                              ? "border-l-4 border-primary"
+                              : ""
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-2">

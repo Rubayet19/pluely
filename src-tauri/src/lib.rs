@@ -5,6 +5,7 @@ mod capture;
 mod db;
 mod shortcuts;
 mod window;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_posthog::{init as posthog_init, PostHogConfig, PostHogOptions};
@@ -17,11 +18,22 @@ use speaker::VadConfig;
 #[allow(deprecated)]
 use tauri_nspanel::{cocoa::appkit::NSWindowCollectionBehavior, panel_delegate, WebviewWindowExt};
 
-#[derive(Default)]
 pub struct AudioState {
     stream_task: Arc<Mutex<Option<JoinHandle<()>>>>,
     vad_config: Arc<Mutex<VadConfig>>,
     is_capturing: Arc<Mutex<bool>>,
+    is_muted: Arc<AtomicBool>,
+}
+
+impl Default for AudioState {
+    fn default() -> Self {
+        Self {
+            stream_task: Arc::new(Mutex::new(None)),
+            vad_config: Arc::new(Mutex::new(VadConfig::default())),
+            is_capturing: Arc::new(Mutex::new(false)),
+            is_muted: Arc::new(AtomicBool::new(false)),
+        }
+    }
 }
 
 #[tauri::command]
@@ -74,6 +86,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_app_version,
             window::set_window_height,
+            window::set_click_through,
             window::open_dashboard,
             window::toggle_dashboard,
             window::move_window,
@@ -115,6 +128,7 @@ pub fn run() {
             speaker::get_audio_sample_rate,
             speaker::get_input_devices,
             speaker::get_output_devices,
+            speaker::toggle_mute_capture,
         ])
         .setup(|app| {
             // Setup main window positioning
@@ -169,23 +183,35 @@ pub fn run() {
                             };
 
                             if let Some(action_id) = action_id {
-                                match event.state() {
-                                    ShortcutState::Pressed => {
-                                        if let Some(direction) =
-                                            action_id.strip_prefix("move_window_")
-                                        {
+                                if let Some(direction) =
+                                    action_id.strip_prefix("move_window_")
+                                {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
                                             shortcuts::start_move_window(app, direction);
-                                        } else {
+                                        }
+                                        ShortcutState::Released => {
+                                            shortcuts::stop_move_window(app, direction);
+                                        }
+                                    }
+                                } else if let Some(direction) =
+                                    action_id.strip_prefix("scroll_response_")
+                                {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
+                                            shortcuts::handle_scroll_start(app, direction);
+                                        }
+                                        ShortcutState::Released => {
+                                            shortcuts::handle_scroll_stop(app, direction);
+                                        }
+                                    }
+                                } else {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
                                             eprintln!("Shortcut triggered: {}", action_id);
                                             shortcuts::handle_shortcut_action(app, &action_id);
                                         }
-                                    }
-                                    ShortcutState::Released => {
-                                        if let Some(direction) =
-                                            action_id.strip_prefix("move_window_")
-                                        {
-                                            shortcuts::stop_move_window(app, direction);
-                                        }
+                                        ShortcutState::Released => {}
                                     }
                                 }
                             }

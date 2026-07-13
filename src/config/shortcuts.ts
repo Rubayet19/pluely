@@ -46,6 +46,16 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
     name: "System Audio",
     description: "Toggle system audio capture",
     defaultKey: {
+      macos: "cmd+shift+u",
+      windows: "ctrl+shift+u",
+      linux: "ctrl+shift+u",
+    },
+  },
+  {
+    id: "mute_voice",
+    name: "Mute Voice",
+    description: "Mute/unmute audio capture in voice mode",
+    defaultKey: {
       macos: "cmd+shift+m",
       windows: "ctrl+shift+m",
       linux: "ctrl+shift+m",
@@ -69,6 +79,36 @@ export const DEFAULT_SHORTCUT_ACTIONS: ShortcutAction[] = [
       macos: "cmd+shift+s",
       windows: "ctrl+shift+s",
       linux: "ctrl+shift+s",
+    },
+  },
+  {
+    id: "send_screenshots",
+    name: "Send Screenshots",
+    description: "Send accumulated screenshots in auto mode",
+    defaultKey: {
+      macos: "cmd+shift+enter",
+      windows: "ctrl+shift+enter",
+      linux: "ctrl+shift+enter",
+    },
+  },
+  {
+    id: "toggle_conversation",
+    name: "Toggle Conversation View",
+    description: "Toggle between AI response and full conversation in voice mode",
+    defaultKey: {
+      macos: "cmd+k",
+      windows: "ctrl+k",
+      linux: "ctrl+k",
+    },
+  },
+  {
+    id: "scroll_response",
+    name: "Scroll Response",
+    description: "Scroll AI response with up/down arrow keys (hold to scroll continuously)",
+    defaultKey: {
+      macos: "cmd+shift",
+      windows: "ctrl+shift",
+      linux: "ctrl+shift",
     },
   },
 ];

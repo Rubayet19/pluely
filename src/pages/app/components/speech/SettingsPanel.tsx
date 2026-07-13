@@ -123,7 +123,7 @@ export const SettingsPanel = ({
   };
 
   return (
-    <div className="rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
+    <div className="rounded-lg border border-border/50 overflow-hidden">
       {/* Settings Header - Always visible */}
       <button
         type="button"

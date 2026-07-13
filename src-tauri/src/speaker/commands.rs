@@ -107,10 +107,12 @@ pub async fn start_system_audio_capture(
     // Emit capture started event
     let _ = app_clone.emit("capture-started", sr);
 
+    let is_muted = state.is_muted.clone();
+
     let state_clone = app.state::<crate::AudioState>();
     let task = tokio::spawn(async move {
         if vad_config.enabled {
-            run_vad_capture(app_clone.clone(), stream, sr, vad_config).await;
+            run_vad_capture(app_clone.clone(), stream, sr, vad_config, is_muted).await;
         } else {
             run_continuous_capture(app_clone.clone(), stream, sr, vad_config).await;
         }
@@ -137,6 +139,7 @@ async fn run_vad_capture(
     stream: impl StreamExt<Item = f32> + Unpin,
     sr: u32,
     config: VadConfig,
+    is_muted: Arc<AtomicBool>,
 ) {
     let mut stream = stream;
     let mut buffer: VecDeque<f32> = VecDeque::new();
@@ -149,6 +152,28 @@ async fn run_vad_capture(
     let max_samples = sr as usize * 30; // 30s safety cap per utterance
 
     while let Some(sample) = stream.next().await {
+        // Check mute flag before processing
+        if is_muted.load(Ordering::Acquire) {
+            if in_speech {
+                if speech_chunks >= config.min_speech_chunks && !speech_buffer.is_empty() {
+                    // Flush in-flight speech as speech-detected
+                    let normalized_buffer = normalize_audio_level(&speech_buffer, 0.1);
+                    if let Ok(b64) = samples_to_wav_b64(sr, &normalized_buffer) {
+                        let _ = app.emit("speech-detected", b64);
+                    }
+                }
+                // Reset speech state regardless of whether we flushed
+                in_speech = false;
+                speech_buffer.clear();
+                silence_chunks = 0;
+                speech_chunks = 0;
+            }
+            // Discard sample and clear pre-speech buffer
+            pre_speech.clear();
+            buffer.clear();
+            continue;
+        }
+
         buffer.push_back(sample);
 
         // Process in fixed chunks for VAD analysis
@@ -483,6 +508,9 @@ pub async fn stop_system_audio_capture(app: AppHandle) -> Result<(), String> {
         .lock()
         .map_err(|e| format!("Failed to update capturing state: {}", e))? = false;
 
+    // Reset mute state
+    state.is_muted.store(false, Ordering::Release);
+
     // Additional cleanup delay (CRITICAL for mic indicator)
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
@@ -623,4 +651,14 @@ pub fn get_output_devices() -> Result<Vec<AudioDevice>, String> {
         error!("Failed to get output devices: {}", e);
         format!("Failed to get output devices: {}", e)
     })
+}
+
+#[tauri::command]
+pub async fn toggle_mute_capture(app: AppHandle) -> Result<bool, String> {
+    let state = app.state::<crate::AudioState>();
+    let is_muted = state.is_muted.load(Ordering::Acquire);
+    let new_state = !is_muted;
+    state.is_muted.store(new_state, Ordering::Release);
+    let _ = app.emit("mute-state-changed", new_state);
+    Ok(new_state)
 }
